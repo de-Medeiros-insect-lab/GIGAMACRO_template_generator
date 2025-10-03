@@ -46,3 +46,6 @@ The system will automatically detect and load the new template when the correspo
 ## Template Format
 
 Templates are text files containing newline-delimited JSON objects, one per position.
+
+## Authors
+Diego Souza, Rina Talaba, Elizabeth Postema, Tony Eisel & Bruno de Medeiros
