@@ -252,32 +252,55 @@
 
         <div class="section">
             <div class="field-group">
-                <label>Choose Lens:</label>
-                <select id="lensType" onchange="loadTemplate()">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="customTemplate" onchange="toggleTemplateMode()" style="width: auto;">
+                    Use Custom Base Template
+                </label>
+            </div>
+
+            <div id="customTemplateUpload" style="display: none;">
+                <div class="field-group">
+                    <label>Upload Custom Template:</label>
+                    <div class="file-upload-container">
+                        <div class="file-name" id="customFileName">No file selected</div>
+                        <button type="button" class="file-upload-btn" onclick="document.getElementById('customTemplateFile').click()">
+                            Browse
+                        </button>
+                        <input type="file" id="customTemplateFile" accept=".txt,.json" style="display: none;" onchange="loadCustomTemplate()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <label>Lens:</label>
+                <select id="lensTypeSelect" onchange="updateLensValue(); loadTemplate()">
                     <option value="TC16M80">TC16M80 (large telecentric)</option>
                     <option value="NiTMX1">NiTMX1 (Nikon toolmakers 1X)</option>
                     <option value="NiTM3X" selected>NiTM3X (Nikon toolmakers 3X)</option>
                     <option value="NiTMX5">NiTMX5 (Nikon toolmakers 5X)</option>
                 </select>
+                <input type="text" id="lensTypeInput" style="display: none;" placeholder="Enter lens name" oninput="updateAllPreviews()">
             </div>
 
             <div class="field-group">
-                <label>Choose View:</label>
-                <select id="viewType" onchange="loadTemplate()">
+                <label>View:</label>
+                <select id="viewTypeSelect" onchange="updateViewValue(); loadTemplate()">
                     <option value="dorsal">Dorsal</option>
                     <option value="lateral">Lateral</option>
                     <option value="ventral">Ventral</option>
                     <option value="labels">Labels</option>
                 </select>
+                <input type="text" id="viewTypeInput" style="display: none;" placeholder="Enter view name" oninput="updateAllPreviews()">
             </div>
 
             <div class="field-group">
-                <label>Choose Row:</label>
-                <select id="rowType" onchange="loadTemplate()">
+                <label>Row:</label>
+                <select id="rowTypeSelect" onchange="updateRowValue(); loadTemplate()">
                     <option value="1">Row 1</option>
                     <option value="2">Row 2</option>
                     <option value="3">Row 3</option>
                 </select>
+                <input type="text" id="rowTypeInput" style="display: none;" placeholder="Enter row name" oninput="updateAllPreviews()">
             </div>
 
             <div class="field-group">
@@ -318,13 +341,167 @@
         // Store loaded template data
         let templateData = null;
 
+        // Track if using custom template
+        let isCustomTemplate = false;
+
+        /**
+         * Toggle between library templates and custom template
+         */
+        function toggleTemplateMode() {
+            isCustomTemplate = document.getElementById('customTemplate').checked;
+
+            const customUpload = document.getElementById('customTemplateUpload');
+            const lensSelect = document.getElementById('lensTypeSelect');
+            const lensInput = document.getElementById('lensTypeInput');
+            const viewSelect = document.getElementById('viewTypeSelect');
+            const viewInput = document.getElementById('viewTypeInput');
+            const rowSelect = document.getElementById('rowTypeSelect');
+            const rowInput = document.getElementById('rowTypeInput');
+
+            if (isCustomTemplate) {
+                // Show custom upload, hide selects, show inputs
+                customUpload.style.display = 'block';
+                lensSelect.style.display = 'none';
+                lensInput.style.display = 'block';
+                lensInput.value = lensSelect.value;
+                viewSelect.style.display = 'none';
+                viewInput.style.display = 'block';
+                viewInput.value = viewSelect.value;
+                rowSelect.style.display = 'none';
+                rowInput.style.display = 'block';
+                rowInput.value = rowSelect.value;
+
+                // Clear library template
+                templateData = null;
+                positions = [];
+                renderPositions();
+            } else {
+                // Hide custom upload, show selects, hide inputs
+                customUpload.style.display = 'none';
+                lensSelect.style.display = 'block';
+                lensInput.style.display = 'none';
+                viewSelect.style.display = 'block';
+                viewInput.style.display = 'none';
+                rowSelect.style.display = 'block';
+                rowInput.style.display = 'none';
+
+                // Load library template
+                loadTemplate();
+            }
+        }
+
+        /**
+         * Update lens value from select to input
+         */
+        function updateLensValue() {
+            const lensInput = document.getElementById('lensTypeInput');
+            const lensSelect = document.getElementById('lensTypeSelect');
+            lensInput.value = lensSelect.value;
+        }
+
+        /**
+         * Update view value from select to input
+         */
+        function updateViewValue() {
+            const viewInput = document.getElementById('viewTypeInput');
+            const viewSelect = document.getElementById('viewTypeSelect');
+            viewInput.value = viewSelect.value;
+        }
+
+        /**
+         * Update row value from select to input
+         */
+        function updateRowValue() {
+            const rowInput = document.getElementById('rowTypeInput');
+            const rowSelect = document.getElementById('rowTypeSelect');
+            rowInput.value = rowSelect.value;
+        }
+
+        /**
+         * Get current lens value (from select or input)
+         */
+        function getLensType() {
+            return isCustomTemplate
+                ? document.getElementById('lensTypeInput').value
+                : document.getElementById('lensTypeSelect').value;
+        }
+
+        /**
+         * Get current view value (from select or input)
+         */
+        function getViewType() {
+            return isCustomTemplate
+                ? document.getElementById('viewTypeInput').value
+                : document.getElementById('viewTypeSelect').value;
+        }
+
+        /**
+         * Get current row value (from select or input)
+         */
+        function getRowType() {
+            return isCustomTemplate
+                ? document.getElementById('rowTypeInput').value
+                : document.getElementById('rowTypeSelect').value;
+        }
+
+        /**
+         * Load custom template from uploaded file
+         */
+        async function loadCustomTemplate() {
+            const fileInput = document.getElementById('customTemplateFile');
+            const fileNameDisplay = document.getElementById('customFileName');
+
+            if (fileInput.files.length === 0) {
+                return;
+            }
+
+            const file = fileInput.files[0];
+            fileNameDisplay.textContent = file.name;
+
+            try {
+                const content = await file.text();
+                const lines = content.trim().split('\n');
+
+                // Parse JSON lines
+                templateData = lines.map(line => JSON.parse(line));
+
+                // Initialize positions array based on template size
+                positions = Array(templateData.length).fill().map(() => ({
+                    fmnhins: '',
+                    taxonomy: '',
+                    type_material: ''
+                }));
+
+                // Render the position inputs
+                renderPositions();
+
+                // Update paste info
+                const pasteInfo = document.getElementById('pasteInfo');
+                if (pasteInfo) {
+                    pasteInfo.textContent = `Paste ${templateData.length} rows from spreadsheet (FMNHINS# | Taxonomy | Type Material)`;
+                }
+
+                showMessage('success', `Loaded custom template with ${templateData.length} positions.`);
+            } catch (error) {
+                showMessage('error', `Error loading custom template: ${error.message}`);
+                templateData = null;
+                positions = [];
+                renderPositions();
+            }
+        }
+
         /**
          * Load template from file based on current selections
          */
         async function loadTemplate() {
-            const lensType = document.getElementById('lensType').value;
-            const viewType = document.getElementById('viewType').value;
-            const rowType = document.getElementById('rowType').value;
+            // Don't load if using custom template
+            if (isCustomTemplate) {
+                return;
+            }
+
+            const lensType = getLensType();
+            const viewType = getViewType();
+            const rowType = getRowType();
 
             // Build template filename based on selections
             const templateFilename = `base_templates/${lensType}_row${rowType}_${viewType}_TEMPLATE.txt`;
@@ -453,9 +630,9 @@
          * Generate template with updated fields
          */
         async function generateTemplate() {
-            const viewType = document.getElementById('viewType').value;
+            const viewType = getViewType();
             const createdBy = document.getElementById('createdBy').value;
-            const lensType = document.getElementById('lensType').value;
+            const lensType = getLensType();
 
             if (!templateData || templateData.length === 0) {
                 showMessage('warning', 'Please wait for template to load first.');
@@ -616,8 +793,8 @@
             }
 
             const position = positions[index];
-            const viewType = document.getElementById('viewType').value;
-            const lensType = document.getElementById('lensType').value;
+            const viewType = getViewType();
+            const lensType = getLensType();
 
             if (!position.fmnhins && !position.taxonomy && !position.type_material) {
                 previewEl.classList.remove('visible');
