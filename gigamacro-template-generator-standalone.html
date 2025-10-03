@@ -252,19 +252,18 @@
 
         <div class="section">
             <div class="field-group">
-                <label>Choose Template File:</label>
-                <div class="file-upload-container">
-                    <div class="file-name" id="fileName">No file selected</div>
-                    <button type="button" class="file-upload-btn" onclick="document.getElementById('templateFile').click()">
-                        Browse
-                    </button>
-                    <input type="file" id="templateFile" accept=".txt,.json" style="display: none;" onchange="updateFileName()">
-                </div>
+                <label>Choose Lens:</label>
+                <select id="lensType" onchange="loadTemplate()">
+                    <option value="TC16M80">TC16M80 (large telecentric)</option>
+                    <option value="NiTMX1">NiTMX1 (Nikon toolmakers 1X)</option>
+                    <option value="NiTM3X" selected>NiTM3X (Nikon toolmakers 3X)</option>
+                    <option value="NiTMX5">NiTMX5 (Nikon toolmakers 5X)</option>
+                </select>
             </div>
 
             <div class="field-group">
-                <label>Choose Template Type:</label>
-                <select id="templateType" onchange="updateAllPreviews()">
+                <label>Choose View:</label>
+                <select id="viewType" onchange="loadTemplate()">
                     <option value="dorsal">Dorsal</option>
                     <option value="lateral">Lateral</option>
                     <option value="ventral">Ventral</option>
@@ -273,25 +272,24 @@
             </div>
 
             <div class="field-group">
-                <label>Created by:</label>
-                <input type="text" id="createdBy" placeholder="Enter your name">
+                <label>Choose Row:</label>
+                <select id="rowType" onchange="loadTemplate()">
+                    <option value="1">Row 1</option>
+                    <option value="2">Row 2</option>
+                    <option value="3">Row 3</option>
+                </select>
             </div>
 
             <div class="field-group">
-                <label>Choose Lens:</label>
-                <select id="lensType" onchange="updateAllPreviews()">
-                    <option value="TC16M80">TC16M80 (large telecentric)</option>
-                    <option value="NiTMX1">NiTMX1 (Nikon toolmakers 1X)</option>
-                    <option value="NiTMX3">NiTMX3 (Nikon toolmakers 3X)</option>
-                    <option value="NiTMX5">NiTMX5 (Nikon toolmakers 5X)</option>
-                </select>
+                <label>Created by:</label>
+                <input type="text" id="createdBy" placeholder="Enter your name">
             </div>
         </div>
 
         <div class="section">
             <h3 style="margin-bottom: 10px; color: #333;">Paste from Table</h3>
-            <div class="info">
-                Paste 11 rows from spreadsheet (FMNHINS# | Taxonomy | Type Material)
+            <div class="info" id="pasteInfo">
+                Paste rows from spreadsheet (FMNHINS# | Taxonomy | Type Material)
             </div>
             <textarea id="pasteData" placeholder="Paste your tab or comma-separated data here..."></textarea>
             <button class="secondary" onclick="parseTable()">Parse and Populate Fields</button>
@@ -314,15 +312,71 @@
     <script>
         // Python backend logic translated to JavaScript
 
-        // Initialize positions array (11 positions)
-        let positions = Array(11).fill().map(() => ({ 
-            fmnhins: '', 
-            taxonomy: '', 
-            type_material: '' 
-        }));
+        // Initialize positions array (will be resized based on template)
+        let positions = [];
 
-        // Store template file content
-        let templateFileContent = null;
+        // Store loaded template data
+        let templateData = null;
+
+        /**
+         * Load template from file based on current selections
+         */
+        async function loadTemplate() {
+            const lensType = document.getElementById('lensType').value;
+            const viewType = document.getElementById('viewType').value;
+            const rowType = document.getElementById('rowType').value;
+
+            // Build template filename based on selections
+            const templateFilename = `base_templates/${lensType}_row${rowType}_${viewType}_TEMPLATE.txt`;
+
+            try {
+                const response = await fetch(templateFilename);
+
+                if (!response.ok) {
+                    showMessage('error', `Template not found: ${templateFilename}. This combination of lens, view, and row is not available.`);
+                    templateData = null;
+                    positions = [];
+                    renderPositions();
+                    return;
+                }
+
+                const content = await response.text();
+                const lines = content.trim().split('\n');
+
+                // Parse JSON lines
+                templateData = lines.map(line => JSON.parse(line));
+
+                // Initialize positions array based on template size
+                positions = Array(templateData.length).fill().map(() => ({
+                    fmnhins: '',
+                    taxonomy: '',
+                    type_material: ''
+                }));
+
+                // Render the position inputs
+                renderPositions();
+
+                // Update paste info
+                const pasteInfo = document.getElementById('pasteInfo');
+                if (pasteInfo) {
+                    pasteInfo.textContent = `Paste ${templateData.length} rows from spreadsheet (FMNHINS# | Taxonomy | Type Material)`;
+                }
+
+                showMessage('success', `Loaded template with ${templateData.length} positions.`);
+            } catch (error) {
+                // Check if it's a CORS/network error
+                if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                    showMessage('error', `Cannot load templates when opening HTML file directly. Please either: (1) Run a local web server, or (2) Use "File > Open" in your browser and allow local file access. Template needed: ${templateFilename}`);
+                } else if (error.name === 'NetworkError' || error.message.includes('NetworkError')) {
+                    showMessage('error', `Cannot load templates from file:// protocol. Please open this file via a web server (e.g., python3 -m http.server) or check browser settings for local file access.`);
+                } else {
+                    showMessage('error', `Error loading template: ${error.message}. Template file: ${templateFilename}`);
+                }
+                templateData = null;
+                positions = [];
+                renderPositions();
+            }
+        }
 
         /**
          * Python function: sanitize_text()
@@ -348,6 +402,11 @@
                 return;
             }
 
+            if (!templateData || positions.length === 0) {
+                showMessage('warning', 'Please wait for template to load first.');
+                return;
+            }
+
             const lines = pastedData.trim().split('\n');
 
             // Clear existing entries
@@ -355,7 +414,7 @@
 
             // Parse and populate each line
             lines.forEach((line, i) => {
-                if (i >= 11) return; // Only process first 11 rows
+                if (i >= positions.length) return; // Only process up to available positions
 
                 // Try tab-separated first, then comma-separated
                 let parts;
@@ -386,7 +445,7 @@
             // Clear the paste box after parsing
             document.getElementById('pasteData').value = '';
 
-            showMessage('success', `Populated ${Math.min(lines.length, 11)} positions from pasted data.`);
+            showMessage('success', `Populated ${Math.min(lines.length, positions.length)} positions from pasted data.`);
         }
 
         /**
@@ -394,41 +453,32 @@
          * Generate template with updated fields
          */
         async function generateTemplate() {
-            const templateFile = document.getElementById('templateFile').files[0];
-            const templateType = document.getElementById('templateType').value;
+            const viewType = document.getElementById('viewType').value;
             const createdBy = document.getElementById('createdBy').value;
             const lensType = document.getElementById('lensType').value;
 
-            if (!templateFile) {
-                showMessage('warning', 'Please select a template file.');
+            if (!templateData || templateData.length === 0) {
+                showMessage('warning', 'Please wait for template to load first.');
+                return;
+            }
+
+            if (!createdBy.trim()) {
+                showMessage('warning', 'Please enter your name in the "Created by" field.');
                 return;
             }
 
             try {
-                // Read template file content if not already loaded
-                if (!templateFileContent) {
-                    templateFileContent = await templateFile.text();
-                }
-
-                // Parse each line as JSON object
-                const lines = templateFileContent.trim().split('\n');
-                let templateData;
-                
-                try {
-                    templateData = lines.map(line => JSON.parse(line));
-                } catch (e) {
-                    showMessage('error', `The selected file is not formatted correctly as JSON. Details: ${e.message}`);
-                    return;
-                }
+                // Create a deep copy of template data to avoid modifying the original
+                const outputData = JSON.parse(JSON.stringify(templateData));
 
                 // Sanitize created_by and get current date
                 const createdBySanitized = sanitizeText(createdBy);
                 const currentDate = getCurrentDate(); // Format like "12Nov2024"
 
                 // Update fields for each position in the template data
-                for (let i = 0; i < Math.min(templateData.length, 11); i++) {
+                for (let i = 0; i < outputData.length; i++) {
                     const position = positions[i];
-                    const positionEntry = templateData[i];
+                    const positionEntry = outputData[i];
 
                     // Sanitize text to remove special characters for final output
                     const fmnhins = sanitizeText(position.fmnhins);
@@ -441,7 +491,7 @@
                         taxonomy,
                         typeMaterial,
                         'h',
-                        templateType,
+                        viewType,
                         lensType,
                         'GMF',
                         `pos_${i + 1}`
@@ -459,7 +509,7 @@
                 }
 
                 // Convert back to newline-delimited JSON
-                const output = templateData.map(entry => JSON.stringify(entry)).join('\n');
+                const output = outputData.map(entry => JSON.stringify(entry)).join('\n');
 
                 // Download the file
                 downloadFile(output, 'gigamacro_template.txt', 'text/plain');
@@ -467,7 +517,7 @@
                 showMessage('success', 'Template saved successfully!');
 
             } catch (error) {
-                showMessage('error', `Could not load the file: ${error.message}`);
+                showMessage('error', `Error generating template: ${error.message}`);
             }
         }
 
@@ -507,33 +557,38 @@
             const container = document.getElementById('positionsContainer');
             container.innerHTML = '';
 
-            for (let i = 0; i < 11; i++) {
+            if (positions.length === 0) {
+                container.innerHTML = '<div class="info">Select lens, view, and row to load template.</div>';
+                return;
+            }
+
+            for (let i = 0; i < positions.length; i++) {
                 const row = document.createElement('div');
-                
+
                 const rowContent = `
                     <div class="row">
                         <div class="position-label">Position ${i + 1}:</div>
                         <div class="position-inputs">
-                            <input type="text" 
-                                   id="fmnhins_${i}" 
-                                   placeholder="FMNHINS#" 
+                            <input type="text"
+                                   id="fmnhins_${i}"
+                                   placeholder="FMNHINS#"
                                    value="${positions[i].fmnhins}"
                                    oninput="updatePosition(${i}, 'fmnhins', this.value)">
-                            <input type="text" 
-                                   id="taxonomy_${i}" 
-                                   placeholder="Taxonomy" 
+                            <input type="text"
+                                   id="taxonomy_${i}"
+                                   placeholder="Taxonomy"
                                    value="${positions[i].taxonomy}"
                                    oninput="updatePosition(${i}, 'taxonomy', this.value)">
-                            <input type="text" 
-                                   id="type_material_${i}" 
-                                   placeholder="Type Material" 
+                            <input type="text"
+                                   id="type_material_${i}"
+                                   placeholder="Type Material"
                                    value="${positions[i].type_material}"
                                    oninput="updatePosition(${i}, 'type_material', this.value)">
                             <div class="preview" id="preview_${i}"></div>
                         </div>
                     </div>
                 `;
-                
+
                 row.innerHTML = rowContent;
                 container.appendChild(row);
             }
@@ -554,10 +609,15 @@
          * Update the preview labels with the final names for each position
          */
         function updatePreview(index) {
-            const position = positions[index];
-            const templateType = document.getElementById('templateType').value;
-            const lensType = document.getElementById('lensType').value;
             const previewEl = document.getElementById(`preview_${index}`);
+
+            if (!previewEl || !positions[index]) {
+                return;
+            }
+
+            const position = positions[index];
+            const viewType = document.getElementById('viewType').value;
+            const lensType = document.getElementById('lensType').value;
 
             if (!position.fmnhins && !position.taxonomy && !position.type_material) {
                 previewEl.classList.remove('visible');
@@ -574,7 +634,7 @@
                 taxonomy,
                 typeMaterial,
                 'h',
-                templateType,
+                viewType,
                 lensType,
                 'GMF',
                 `pos_${index + 1}`
@@ -582,7 +642,7 @@
 
             // Construct the final name format
             const preview = nameParts.join('_');
-            
+
             previewEl.textContent = preview;
             previewEl.classList.add('visible');
         }
@@ -591,24 +651,8 @@
          * Update all previews
          */
         function updateAllPreviews() {
-            for (let i = 0; i < 11; i++) {
+            for (let i = 0; i < positions.length; i++) {
                 updatePreview(i);
-            }
-        }
-
-        /**
-         * Update file name display
-         */
-        function updateFileName() {
-            const fileInput = document.getElementById('templateFile');
-            const fileNameDisplay = document.getElementById('fileName');
-            
-            if (fileInput.files.length > 0) {
-                fileNameDisplay.textContent = fileInput.files[0].name;
-                // Reset cached content when new file is selected
-                templateFileContent = null;
-            } else {
-                fileNameDisplay.textContent = 'No file selected';
             }
         }
 
@@ -627,6 +671,7 @@
 
         // Initialize on page load
         renderPositions();
+        loadTemplate();
     </script>
 </body>
 </html>
