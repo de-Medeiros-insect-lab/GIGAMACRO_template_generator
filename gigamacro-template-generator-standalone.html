@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIGAmacro Template Generator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .section {
+            margin-bottom: 25px;
+            padding-bottom: 25px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .field-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="file"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            font-family: monospace;
+            min-height: 120px;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 15px;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .position-label {
+            font-weight: 600;
+            padding-top: 10px;
+            color: #667eea;
+            min-width: 90px;
+        }
+
+        .position-inputs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .position-inputs input {
+            width: 100%;
+        }
+
+        .preview {
+            grid-column: 1 / -1;
+            padding: 8px;
+            background: #f0f4ff;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #667eea;
+            font-family: monospace;
+            word-break: break-all;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .preview.visible {
+            display: block;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        button.secondary {
+            background: #48bb78;
+        }
+
+        button.secondary:hover {
+            background: #38a169;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #28a745;
+            color: #155724;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #dc3545;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+
+        .info {
+            background: #e7f3ff;
+            border: 1px solid #2196F3;
+            color: #0c5460;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+
+        .input-labels {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .file-upload-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .file-name {
+            flex: 1;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .file-upload-btn {
+            padding: 10px 20px;
+            width: auto;
+            margin: 0;
+        }
+
+        #message {
+            display: none;
+        }
+
+        #message.visible {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GIGAmacro Template Generator</h1>
+
+        <div id="message"></div>
+
+        <div class="section">
+            <div class="field-group">
+                <label>Choose Template File:</label>
+                <div class="file-upload-container">
+                    <div class="file-name" id="fileName">No file selected</div>
+                    <button type="button" class="file-upload-btn" onclick="document.getElementById('templateFile').click()">
+                        Browse
+                    </button>
+                    <input type="file" id="templateFile" accept=".txt,.json" style="display: none;" onchange="updateFileName()">
+                </div>
+            </div>
+
+            <div class="field-group">
+                <label>Choose Template Type:</label>
+                <select id="templateType" onchange="updateAllPreviews()">
+                    <option value="dorsal">Dorsal</option>
+                    <option value="lateral">Lateral</option>
+                    <option value="ventral">Ventral</option>
+                    <option value="labels">Labels</option>
+                </select>
+            </div>
+
+            <div class="field-group">
+                <label>Created by:</label>
+                <input type="text" id="createdBy" placeholder="Enter your name">
+            </div>
+
+            <div class="field-group">
+                <label>Choose Lens:</label>
+                <select id="lensType" onchange="updateAllPreviews()">
+                    <option value="TC16M80">TC16M80 (large telecentric)</option>
+                    <option value="NiTMX1">NiTMX1 (Nikon toolmakers 1X)</option>
+                    <option value="NiTMX3">NiTMX3 (Nikon toolmakers 3X)</option>
+                    <option value="NiTMX5">NiTMX5 (Nikon toolmakers 5X)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3 style="margin-bottom: 10px; color: #333;">Paste from Table</h3>
+            <div class="info">
+                Paste 11 rows from spreadsheet (FMNHINS# | Taxonomy | Type Material)
+            </div>
+            <textarea id="pasteData" placeholder="Paste your tab or comma-separated data here..."></textarea>
+            <button class="secondary" onclick="parseTable()">Parse and Populate Fields</button>
+        </div>
+
+        <div class="section">
+            <h3 style="margin-bottom: 15px; color: #333;">Position Data</h3>
+            <div class="input-labels">
+                <div>FMNHINS#</div>
+                <div>Taxonomy</div>
+                <div>Type Material</div>
+            </div>
+
+            <div id="positionsContainer"></div>
+        </div>
+
+        <button onclick="generateTemplate()">Generate Template</button>
+    </div>
+
+    <script>
+        // Python backend logic translated to JavaScript
+
+        // Initialize positions array (11 positions)
+        let positions = Array(11).fill().map(() => ({ 
+            fmnhins: '', 
+            taxonomy: '', 
+            type_material: '' 
+        }));
+
+        // Store template file content
+        let templateFileContent = null;
+
+        /**
+         * Python function: sanitize_text()
+         * Replace spaces with underscores and check for special characters
+         */
+        function sanitizeText(text) {
+            const hasSpecialChars = /[^a-zA-Z0-9 _]/.test(text);
+            if (hasSpecialChars) {
+                showMessage('warning', 'Special characters detected. Only alphanumeric characters and spaces are permitted.');
+            }
+            return text.replace(/ /g, '_');
+        }
+
+        /**
+         * Python function: parse_table()
+         * Parse pasted table data and populate the entry fields
+         */
+        function parseTable() {
+            const pastedData = document.getElementById('pasteData').value;
+
+            if (!pastedData.trim()) {
+                showMessage('warning', 'Please paste data into the text box first.');
+                return;
+            }
+
+            const lines = pastedData.trim().split('\n');
+
+            // Clear existing entries
+            positions = positions.map(() => ({ fmnhins: '', taxonomy: '', type_material: '' }));
+
+            // Parse and populate each line
+            lines.forEach((line, i) => {
+                if (i >= 11) return; // Only process first 11 rows
+
+                // Try tab-separated first, then comma-separated
+                let parts;
+                if (line.includes('\t')) {
+                    parts = line.split('\t');
+                } else {
+                    parts = line.split(',');
+                }
+
+                // Remove leading/trailing whitespace from each part
+                parts = parts.map(p => p.trim());
+
+                // Populate fields based on available data
+                if (parts.length > 0 && parts[0]) {
+                    positions[i].fmnhins = parts[0];
+                }
+                if (parts.length > 1 && parts[1]) {
+                    positions[i].taxonomy = parts[1];
+                }
+                if (parts.length > 2 && parts[2]) {
+                    positions[i].type_material = parts[2];
+                }
+            });
+
+            // Render updated positions
+            renderPositions();
+
+            // Clear the paste box after parsing
+            document.getElementById('pasteData').value = '';
+
+            showMessage('success', `Populated ${Math.min(lines.length, 11)} positions from pasted data.`);
+        }
+
+        /**
+         * Python function: generate_template()
+         * Generate template with updated fields
+         */
+        async function generateTemplate() {
+            const templateFile = document.getElementById('templateFile').files[0];
+            const templateType = document.getElementById('templateType').value;
+            const createdBy = document.getElementById('createdBy').value;
+            const lensType = document.getElementById('lensType').value;
+
+            if (!templateFile) {
+                showMessage('warning', 'Please select a template file.');
+                return;
+            }
+
+            try {
+                // Read template file content if not already loaded
+                if (!templateFileContent) {
+                    templateFileContent = await templateFile.text();
+                }
+
+                // Parse each line as JSON object
+                const lines = templateFileContent.trim().split('\n');
+                let templateData;
+                
+                try {
+                    templateData = lines.map(line => JSON.parse(line));
+                } catch (e) {
+                    showMessage('error', `The selected file is not formatted correctly as JSON. Details: ${e.message}`);
+                    return;
+                }
+
+                // Sanitize created_by and get current date
+                const createdBySanitized = sanitizeText(createdBy);
+                const currentDate = getCurrentDate(); // Format like "12Nov2024"
+
+                // Update fields for each position in the template data
+                for (let i = 0; i < Math.min(templateData.length, 11); i++) {
+                    const position = positions[i];
+                    const positionEntry = templateData[i];
+
+                    // Sanitize text to remove special characters for final output
+                    const fmnhins = sanitizeText(position.fmnhins);
+                    const taxonomy = sanitizeText(position.taxonomy);
+                    const typeMaterial = sanitizeText(position.type_material);
+
+                    // Build project name parts and filter out empty strings to avoid double underscores
+                    const nameParts = [
+                        fmnhins,
+                        taxonomy,
+                        typeMaterial,
+                        'h',
+                        templateType,
+                        lensType,
+                        'GMF',
+                        `pos_${i + 1}`
+                    ].filter(part => part !== '');
+
+                    // Construct the project name and data directory
+                    const projectName = nameParts.join('_');
+                    const dataDirectory = `${projectName}_`;
+
+                    // Update fields in the template
+                    positionEntry.project_name = projectName;
+                    positionEntry.project_data_directory = dataDirectory;
+                    positionEntry.project_author = createdBySanitized;
+                    positionEntry.project_date = currentDate;
+                }
+
+                // Convert back to newline-delimited JSON
+                const output = templateData.map(entry => JSON.stringify(entry)).join('\n');
+
+                // Download the file
+                downloadFile(output, 'gigamacro_template.txt', 'text/plain');
+
+                showMessage('success', 'Template saved successfully!');
+
+            } catch (error) {
+                showMessage('error', `Could not load the file: ${error.message}`);
+            }
+        }
+
+        /**
+         * Get current date in format "12Nov2024"
+         */
+        function getCurrentDate() {
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = months[now.getMonth()];
+            const year = now.getFullYear();
+            return `${day}${month}${year}`;
+        }
+
+        /**
+         * Download file to user's computer
+         */
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // UI Helper Functions
+
+        /**
+         * Render all position inputs
+         */
+        function renderPositions() {
+            const container = document.getElementById('positionsContainer');
+            container.innerHTML = '';
+
+            for (let i = 0; i < 11; i++) {
+                const row = document.createElement('div');
+                
+                const rowContent = `
+                    <div class="row">
+                        <div class="position-label">Position ${i + 1}:</div>
+                        <div class="position-inputs">
+                            <input type="text" 
+                                   id="fmnhins_${i}" 
+                                   placeholder="FMNHINS#" 
+                                   value="${positions[i].fmnhins}"
+                                   oninput="updatePosition(${i}, 'fmnhins', this.value)">
+                            <input type="text" 
+                                   id="taxonomy_${i}" 
+                                   placeholder="Taxonomy" 
+                                   value="${positions[i].taxonomy}"
+                                   oninput="updatePosition(${i}, 'taxonomy', this.value)">
+                            <input type="text" 
+                                   id="type_material_${i}" 
+                                   placeholder="Type Material" 
+                                   value="${positions[i].type_material}"
+                                   oninput="updatePosition(${i}, 'type_material', this.value)">
+                            <div class="preview" id="preview_${i}"></div>
+                        </div>
+                    </div>
+                `;
+                
+                row.innerHTML = rowContent;
+                container.appendChild(row);
+            }
+
+            updateAllPreviews();
+        }
+
+        /**
+         * Update a position value
+         */
+        function updatePosition(index, field, value) {
+            positions[index][field] = value;
+            updatePreview(index);
+        }
+
+        /**
+         * Python function: update_preview()
+         * Update the preview labels with the final names for each position
+         */
+        function updatePreview(index) {
+            const position = positions[index];
+            const templateType = document.getElementById('templateType').value;
+            const lensType = document.getElementById('lensType').value;
+            const previewEl = document.getElementById(`preview_${index}`);
+
+            if (!position.fmnhins && !position.taxonomy && !position.type_material) {
+                previewEl.classList.remove('visible');
+                return;
+            }
+
+            const fmnhins = sanitizeText(position.fmnhins);
+            const taxonomy = sanitizeText(position.taxonomy);
+            const typeMaterial = sanitizeText(position.type_material);
+
+            // Build preview name parts and filter out empty strings to avoid double underscores
+            const nameParts = [
+                fmnhins,
+                taxonomy,
+                typeMaterial,
+                'h',
+                templateType,
+                lensType,
+                'GMF',
+                `pos_${index + 1}`
+            ].filter(part => part !== '');
+
+            // Construct the final name format
+            const preview = nameParts.join('_');
+            
+            previewEl.textContent = preview;
+            previewEl.classList.add('visible');
+        }
+
+        /**
+         * Update all previews
+         */
+        function updateAllPreviews() {
+            for (let i = 0; i < 11; i++) {
+                updatePreview(i);
+            }
+        }
+
+        /**
+         * Update file name display
+         */
+        function updateFileName() {
+            const fileInput = document.getElementById('templateFile');
+            const fileNameDisplay = document.getElementById('fileName');
+            
+            if (fileInput.files.length > 0) {
+                fileNameDisplay.textContent = fileInput.files[0].name;
+                // Reset cached content when new file is selected
+                templateFileContent = null;
+            } else {
+                fileNameDisplay.textContent = 'No file selected';
+            }
+        }
+
+        /**
+         * Show message to user
+         */
+        function showMessage(type, text) {
+            const messageEl = document.getElementById('message');
+            messageEl.className = `${type} visible`;
+            messageEl.textContent = text;
+
+            setTimeout(() => {
+                messageEl.classList.remove('visible');
+            }, 5000);
+        }
+
+        // Initialize on page load
+        renderPositions();
+    </script>
+</body>
+</html>
