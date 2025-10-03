@@ -4,9 +4,16 @@ A web-based tool for generating GIGAmacro project templates with customizable le
 
 ## Usage
 
-### Option 1: Using a Local Web Server (Recommended)
+### Online Version (Easiest)
 
-Due to browser security restrictions, the HTML file needs to be served via HTTP rather than opened directly.
+**Coming soon**: Once GitHub Pages is enabled, the tool will be available at:
+```
+https://de-medeiros-insect-lab.github.io/GIGAMACRO_template_generator/
+```
+
+### Local Development
+
+If you want to run it locally or make modifications:
 
 1. Navigate to the project directory:
    ```bash
@@ -20,12 +27,10 @@ Due to browser security restrictions, the HTML file needs to be served via HTTP 
 
 3. Open your browser and navigate to:
    ```
-   http://localhost:8000/gigamacro-template-generator-standalone.html
+   http://localhost:8000/
    ```
 
-### Option 2: Direct File Access (Limited)
-
-Some browsers allow local file access with special flags, but this is not recommended for regular use.
+**Note**: Due to browser security restrictions, the HTML file needs to be served via HTTP rather than opened directly as a file.
 
 ## Adding New Templates
 
