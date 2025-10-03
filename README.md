@@ -6,7 +6,7 @@ A web-based tool for generating GIGAmacro project templates with customizable le
 
 ### Online Version (Easiest)
 
-**Coming soon**: Once GitHub Pages is enabled, the tool will be available at:
+Access the live version at:
 ```
 https://de-medeiros-insect-lab.github.io/GIGAMACRO_template_generator/
 ```
