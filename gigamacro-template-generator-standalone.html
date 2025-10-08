@@ -703,6 +703,7 @@
             const viewType = getViewType();
             const createdBy = document.getElementById('createdBy').value;
             const lensType = getLensType();
+            const startingRow = parseInt(getRowType());
 
             if (!templateData || templateData.length === 0) {
                 showMessage('warning', 'Please wait for template to load first.');
@@ -727,6 +728,10 @@
                     const position = positions[i];
                     const positionEntry = outputData[i];
 
+                    // Calculate which row this specimen is in (11 specimens per row)
+                    const rowNum = startingRow + Math.floor(i / 11);
+                    const posInRow = (i % 11) + 1;
+
                     // Sanitize text to remove special characters for final output
                     const fmnhins = sanitizeText(position.fmnhins);
                     const taxonomy = sanitizeText(position.taxonomy);
@@ -741,7 +746,7 @@
                         viewType,
                         lensType,
                         'GMF',
-                        `pos_${i + 1}`
+                        `row_${rowNum}_pos_${posInRow}`
                     ].filter(part => part !== '');
 
                     // Construct the project name and data directory
@@ -871,11 +876,16 @@
             const position = positions[index];
             const viewType = getViewType();
             const lensType = getLensType();
+            const startingRow = parseInt(getRowType());
 
             if (!position.fmnhins && !position.taxonomy && !position.type_material) {
                 previewEl.classList.remove('visible');
                 return;
             }
+
+            // Calculate which row this specimen is in (11 specimens per row)
+            const rowNum = startingRow + Math.floor(index / 11);
+            const posInRow = (index % 11) + 1;
 
             const fmnhins = sanitizeText(position.fmnhins);
             const taxonomy = sanitizeText(position.taxonomy);
@@ -890,7 +900,7 @@
                 viewType,
                 lensType,
                 'GMF',
-                `pos_${index + 1}`
+                `row_${rowNum}_pos_${posInRow}`
             ].filter(part => part !== '');
 
             // Construct the final name format
