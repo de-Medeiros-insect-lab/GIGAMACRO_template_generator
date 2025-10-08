@@ -96,7 +96,7 @@
             font-weight: 600;
             padding-top: 10px;
             color: #667eea;
-            min-width: 90px;
+            min-width: 150px;
         }
 
         .position-inputs {
@@ -294,13 +294,52 @@
             </div>
 
             <div class="field-group">
-                <label>Row:</label>
+                <label>Number of Specimens:</label>
+                <select id="numSpecimens" onchange="loadTemplate()">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10">10</option>
+                    <option value="11" selected>11</option>
+                    <option value="12">12</option>
+                    <option value="13">13</option>
+                    <option value="14">14</option>
+                    <option value="15">15</option>
+                    <option value="16">16</option>
+                    <option value="17">17</option>
+                    <option value="18">18</option>
+                    <option value="19">19</option>
+                    <option value="20">20</option>
+                    <option value="21">21</option>
+                    <option value="22">22</option>
+                    <option value="23">23</option>
+                    <option value="24">24</option>
+                    <option value="25">25</option>
+                    <option value="26">26</option>
+                    <option value="27">27</option>
+                    <option value="28">28</option>
+                    <option value="29">29</option>
+                    <option value="30">30</option>
+                    <option value="31">31</option>
+                    <option value="32">32</option>
+                    <option value="33">33</option>
+                </select>
+            </div>
+
+            <div class="field-group">
+                <label>Starting Row:</label>
                 <select id="rowTypeSelect" onchange="updateRowValue(); loadTemplate()">
                     <option value="1">Row 1</option>
                     <option value="2">Row 2</option>
                     <option value="3">Row 3</option>
                 </select>
-                <input type="text" id="rowTypeInput" style="display: none;" placeholder="Enter row name" oninput="updateAllPreviews()">
+                <input type="text" id="rowTypeInput" style="display: none;" placeholder="Enter starting row" oninput="updateAllPreviews()">
             </div>
 
             <div class="field-group">
@@ -501,34 +540,64 @@
 
             const lensType = getLensType();
             const viewType = getViewType();
-            const rowType = getRowType();
+            const startingRow = parseInt(getRowType());
+            const numSpecimens = parseInt(document.getElementById('numSpecimens').value);
 
-            // Build template filename based on selections
-            const templateFilename = `base_templates/${lensType}_row${rowType}_${viewType}_TEMPLATE.txt`;
+            // Calculate how many rows we need (11 specimens per row)
+            const numRowsNeeded = Math.ceil(numSpecimens / 11);
+
+            // Determine which row numbers we need to load
+            const rowsToLoad = [];
+            for (let i = 0; i < numRowsNeeded; i++) {
+                rowsToLoad.push(startingRow + i);
+            }
+
+            // Preserve existing position data when resizing
+            const oldPositions = positions.slice();
+
+            // Load all required templates
+            const allTemplateData = [];
+            const loadedRows = [];
 
             try {
-                const response = await fetch(templateFilename);
+                for (const rowNum of rowsToLoad) {
+                    const templateFilename = `base_templates/${lensType}_row${rowNum}_${viewType}_TEMPLATE.txt`;
 
-                if (!response.ok) {
-                    showMessage('error', `Template not found: ${templateFilename}. This combination of lens, view, and row is not available.`);
-                    templateData = null;
-                    positions = [];
-                    renderPositions();
-                    return;
+                    const response = await fetch(templateFilename);
+
+                    if (!response.ok) {
+                        throw new Error(`Template not found: ${templateFilename}. This combination of lens, view, and row is not available.`);
+                    }
+
+                    const content = await response.text();
+                    const lines = content.trim().split('\n');
+
+                    // Parse JSON lines and add to combined template data
+                    const rowTemplateData = lines.map(line => JSON.parse(line));
+                    allTemplateData.push(...rowTemplateData);
+                    loadedRows.push(rowNum);
                 }
 
-                const content = await response.text();
-                const lines = content.trim().split('\n');
+                // Store combined template data
+                templateData = allTemplateData;
 
-                // Parse JSON lines
-                templateData = lines.map(line => JSON.parse(line));
+                // Trim to exact number of specimens needed
+                if (templateData.length > numSpecimens) {
+                    templateData = templateData.slice(0, numSpecimens);
+                }
 
-                // Initialize positions array based on template size
-                positions = Array(templateData.length).fill().map(() => ({
-                    fmnhins: '',
-                    taxonomy: '',
-                    type_material: ''
-                }));
+                // Initialize positions array based on number of specimens
+                positions = Array(numSpecimens).fill().map((_, i) => {
+                    // Preserve data from old positions if it exists
+                    if (i < oldPositions.length) {
+                        return { ...oldPositions[i] };
+                    }
+                    return {
+                        fmnhins: '',
+                        taxonomy: '',
+                        type_material: ''
+                    };
+                });
 
                 // Render the position inputs
                 renderPositions();
@@ -536,18 +605,19 @@
                 // Update paste info
                 const pasteInfo = document.getElementById('pasteInfo');
                 if (pasteInfo) {
-                    pasteInfo.textContent = `Paste ${templateData.length} rows from spreadsheet (FMNHINS# | Taxonomy | Type Material)`;
+                    pasteInfo.textContent = `Paste ${numSpecimens} rows from spreadsheet (FMNHINS# | Taxonomy | Type Material)`;
                 }
 
-                showMessage('success', `Loaded template with ${templateData.length} positions.`);
+                const rowsLoadedText = loadedRows.length > 1 ? `rows ${loadedRows.join(', ')}` : `row ${loadedRows[0]}`;
+                showMessage('success', `Loaded ${numSpecimens} specimen positions from ${rowsLoadedText}.`);
             } catch (error) {
                 // Check if it's a CORS/network error
                 if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-                    showMessage('error', `Cannot load templates when opening HTML file directly. Please either: (1) Run a local web server, or (2) Use "File > Open" in your browser and allow local file access. Template needed: ${templateFilename}`);
+                    showMessage('error', `Cannot load templates when opening HTML file directly. Please either: (1) Run a local web server, or (2) Use "File > Open" in your browser and allow local file access.`);
                 } else if (error.name === 'NetworkError' || error.message.includes('NetworkError')) {
                     showMessage('error', `Cannot load templates from file:// protocol. Please open this file via a web server (e.g., python3 -m http.server) or check browser settings for local file access.`);
                 } else {
-                    showMessage('error', `Error loading template: ${error.message}. Template file: ${templateFilename}`);
+                    showMessage('error', `Error loading template: ${error.message}`);
                 }
                 templateData = null;
                 positions = [];
@@ -739,12 +809,18 @@
                 return;
             }
 
+            const startingRow = parseInt(getRowType());
+
             for (let i = 0; i < positions.length; i++) {
+                // Calculate which row this specimen is in (11 specimens per row)
+                const rowNum = startingRow + Math.floor(i / 11);
+                const posInRow = (i % 11) + 1;
+
                 const row = document.createElement('div');
 
                 const rowContent = `
                     <div class="row">
-                        <div class="position-label">Position ${i + 1}:</div>
+                        <div class="position-label">Row ${rowNum}, Position ${posInRow}:</div>
                         <div class="position-inputs">
                             <input type="text"
                                    id="fmnhins_${i}"
